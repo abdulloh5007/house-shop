@@ -1,0 +1,64 @@
+{
+  "placeholderImages": [
+    {
+      "id": "1",
+      "description": "A modern wireless headphone set.",
+      "imageUrl": "https://picsum.photos/seed/NC1/600/400",
+      "imageHint": "wireless headphones"
+    },
+    {
+      "id": "2",
+      "description": "A sleek and powerful smartphone.",
+      "imageUrl": "https://picsum.photos/seed/NC2/600/400",
+      "imageHint": "modern smartphone"
+    },
+    {
+      "id": "3",
+      "description": "A high-performance gaming laptop.",
+      "imageUrl": "https://picsum.photos/seed/NC3/600/400",
+      "imageHint": "gaming laptop"
+    },
+    {
+      "id": "4",
+      "description": "A stylish and comfortable t-shirt.",
+      "imageUrl": "https://picsum.photos/seed/NC4/600/400",
+      "imageHint": "stylish t-shirt"
+    },
+    {
+      "id": "5",
+      "description": "A pair of classic denim jeans.",
+      "imageUrl": "https://picsum.photos/seed/NC5/600/400",
+      "imageHint": "denim jeans"
+    },
+    {
+      "id": "6",
+      "description": "A pair of trendy sneakers.",
+      "imageUrl": "https://picsum.photos/seed/NC6/600/400",
+      "imageHint": "trendy sneakers"
+    },
+    {
+      "id": "7",
+      "description": "A captivating science fiction novel.",
+      "imageUrl": "https://picsum.photos/seed/NC7/600/400",
+      "imageHint": "book cover"
+    },
+    {
+      "id": "8",
+      "description": "An inspiring self-help book.",
+      "imageUrl": "https://picsum.photos/seed/NC8/600/400",
+      "imageHint": "book open"
+    },
+    {
+      "id": "9",
+      "description": "A smart watch with fitness tracking.",
+      "imageUrl": "https://picsum.photos/seed/NC9/600/400",
+      "imageHint": "smart watch"
+    },
+    {
+      "id": "10",
+      "description": "A durable and stylish backpack.",
+      "imageUrl": "https://picsum.photos/seed/NC10/600/400",
+      "imageHint": "stylish backpack"
+    }
+  ]
+}
