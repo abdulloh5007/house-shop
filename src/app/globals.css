@@ -30,6 +30,7 @@
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
   }
+
   .dark {
     --background: 210 31% 13%;
     --foreground: 210 40% 98%;
@@ -63,20 +64,35 @@
     @apply border-border;
   }
 
-  html, body { touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+  html,
+  body {
+    touch-action: pan-y;
+    user-select: none;
+    -webkit-user-select: none;
+  }
 
   body {
     @apply bg-background text-foreground;
-    -ms-overflow-style: none;  /* IE и Edge */
-    scrollbar-width: none; 
+    -ms-overflow-style: none;
+    /* IE и Edge */
+    scrollbar-width: none;
   }
 
   body::-webkit-scrollbar {
     display: none;
   }
 
-  image, img {
+  image,
+  img {
     user-drag: none;
     -webkit-user-drag: none;
   }
+
+  /* Chrome, Safari, Edge */
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
 }

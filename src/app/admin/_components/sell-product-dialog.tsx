@@ -5,6 +5,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Product } from './product-provider';
 import { getFirestore, doc, runTransaction, collection, serverTimestamp, increment } from 'firebase/firestore';
@@ -38,6 +39,7 @@ export function SellProductDialog({ product, open, onOpenChange }: { product: Pr
     const [sellingPrice, setSellingPrice] = useState('');
     const [quantity, setQuantity] = useState('1');
     const [isSaving, setIsSaving] = useState(false);
+    const [selectedSize, setSelectedSize] = useState<string>('');
     const { toast } = useToast();
     const { lang } = useLanguage();
     const t = translations[lang];
@@ -46,19 +48,30 @@ export function SellProductDialog({ product, open, onOpenChange }: { product: Pr
         if (open && product) {
             setSellingPrice(String(product.price));
             setQuantity('1'); // Reset quantity on open
+            const sizes = Array.isArray((product as any).sizes) ? (product as any).sizes : [];
+            if (sizes.length > 0) {
+                const first = sizes[0];
+                setSelectedSize(String(first.size));
+            } else {
+                setSelectedSize('');
+            }
         }
     }, [open, product]);
 
     const handleQuantityChange = (value: string) => {
         const numValue = parseInt(unformatNumber(value), 10);
         if (!product) return;
+        const sizes = Array.isArray((product as any).sizes) ? (product as any).sizes : [];
+        const sizeStock = sizes.length > 0 && selectedSize !== ''
+            ? Number((sizes.find((s: any) => String(s.size) === String(selectedSize))?.quantity) || 0)
+            : product.quantity;
 
         if (value === '') {
             setQuantity('');
-        } else if (!isNaN(numValue) && numValue >= 0 && numValue <= product.quantity) {
+        } else if (!isNaN(numValue) && numValue >= 0 && numValue <= sizeStock) {
             setQuantity(String(numValue));
-        } else if (!isNaN(numValue) && numValue > product.quantity) {
-            setQuantity(String(product.quantity)); // Cap at max quantity
+        } else if (!isNaN(numValue) && numValue > sizeStock) {
+            setQuantity(String(sizeStock)); // Cap at max quantity by size
         }
     };
     
@@ -82,6 +95,7 @@ export function SellProductDialog({ product, open, onOpenChange }: { product: Pr
 
         const sellQuantity = parseInt(unformatNumber(quantity), 10);
         const sellPrice = parseFloat(unformatNumber(sellingPrice));
+        const sizeToSell = selectedSize;
 
         setIsSaving(true);
         try {
@@ -95,20 +109,36 @@ export function SellProductDialog({ product, open, onOpenChange }: { product: Pr
                     throw new Error(t.productNotFound);
                 }
 
-                const currentQuantity = productDoc.data().quantity;
-                if (currentQuantity < sellQuantity) {
+                const data = productDoc.data() as any;
+                const currentQuantity = Number(data.quantity || 0);
+                const sizesArr = Array.isArray(data.sizes) ? data.sizes : [];
+
+                if (!sizeToSell || sizesArr.length === 0) {
+                    throw new Error(t.addAtLeastOneSize || 'Добавьте хотя бы один размер.');
+                }
+
+                const sizeIndex = sizesArr.findIndex((s: any) => String(s.size) === String(sizeToSell));
+                if (sizeIndex === -1) {
+                    throw new Error(t.selectSizePlaceholder || 'Выберите размер');
+                }
+
+                const sizeStock = Number(sizesArr[sizeIndex]?.quantity || 0);
+                if (sizeStock < sellQuantity) {
                     throw new Error(t.notEnoughStock);
                 }
 
                 // Calculate real profit for this sale
-                const purchasePrice = product.purchasePrice || 0; // Get purchase price from product
+                const purchasePrice = (product as any).purchasePrice || 0; // Get purchase price from product
                 const itemIncome = sellPrice * sellQuantity;
                 const itemCost = purchasePrice * sellQuantity;
                 const itemProfit = itemIncome - itemCost;
 
-                // 1. Decrement product quantity
+                // 1. Decrement product total quantity and the selected size quantity
                 const newQuantity = currentQuantity - sellQuantity;
-                transaction.update(productDocRef, { quantity: newQuantity });
+                const newSizes = sizesArr.map((s: any, idx: number) => (
+                    idx === sizeIndex ? { ...s, quantity: Number(s.quantity || 0) - sellQuantity } : s
+                ));
+                transaction.update(productDocRef, { quantity: newQuantity, sizes: newSizes });
                 
                 // 2. Prepare sale data for subcollection
                 const selledCollectionRef = collection(db, `products/${product.id}/selled`);
@@ -118,6 +148,7 @@ export function SellProductDialog({ product, open, onOpenChange }: { product: Pr
                 const saleData: any = {
                     selledAt: serverTimestamp(),
                     quantity: sellQuantity,
+                    size: sizeToSell,
                     sellingPrice: sellPrice,
                     purchasePrice: purchasePrice, // Store purchase price for historical data
                     totalIncome: itemIncome,
@@ -127,9 +158,9 @@ export function SellProductDialog({ product, open, onOpenChange }: { product: Pr
                     transactionHash: transactionHash,
                     productId: product.id,
                     orderId: `manual_${Date.now()}`, // Placeholder for manual sales
-                    originalPrice: product.originalPrice || null, // Use null instead of undefined
-                    discountPercentage: product.discountPercentage || null, // Use null instead of undefined
-                    discountedPrice: product.discountedPrice || null, // Use null instead of undefined
+                    originalPrice: (product as any).originalPrice || null, // Use null instead of undefined
+                    discountPercentage: (product as any).discountPercentage || null, // Use null instead of undefined
+                    discountedPrice: (product as any).discountedPrice || null, // Use null instead of undefined
                 };
                 
                 transaction.set(saleDocRef, saleData);
@@ -146,6 +177,7 @@ export function SellProductDialog({ product, open, onOpenChange }: { product: Pr
                     productId: product.id,
                     productName: product.name,
                     quantity: sellQuantity,
+                    size: sizeToSell,
                     sellingPrice: sellPrice,
                     purchasePrice: purchasePrice,
                     totalIncome: itemIncome,
@@ -154,15 +186,15 @@ export function SellProductDialog({ product, open, onOpenChange }: { product: Pr
                     saleId: saleDocRef.id,
                     transactionHash: transactionHash,
                     // Discount related fields
-                    originalPrice: product.originalPrice || null,
-                    discountedPrice: product.discountedPrice || null,
-                    discountPercentage: product.discountPercentage || null,
+                    originalPrice: (product as any).originalPrice || null,
+                    discountedPrice: (product as any).discountedPrice || null,
+                    discountPercentage: (product as any).discountPercentage || null,
                 });
             });
 
             toast({
                 title: t.soldTitle,
-                description: `${product.name} (${sellQuantity} ${t.quantityUnit}) ${t.successfullySold}`,
+                description: `${product.name} (${sellQuantity} ${t.quantityUnit}${selectedSize ? `, ${t.selectSizeLabel}: ${selectedSize}` : ''}) ${t.successfullySold}`,
             });
             onOpenChange(false);
 
@@ -208,11 +240,36 @@ export function SellProductDialog({ product, open, onOpenChange }: { product: Pr
                         )}
                      </div>
 
+                     {/* Size selection */}
+                     <div className="space-y-2">
+                        <Label>{t.selectSizeLabel}</Label>
+                        <Select value={selectedSize} onValueChange={(val) => { setSelectedSize(val); setQuantity('1'); }}>
+                            <SelectTrigger>
+                                <SelectValue placeholder={t.selectSizePlaceholder} />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {Array.isArray((product as any).sizes) && (product as any).sizes.length > 0 ? (
+                                    (product as any).sizes.map((s: any, idx: number) => (
+                                        <SelectItem key={idx} value={String(s.size)}>
+                                            {String(s.size)} ({t.inStockLabel.toLowerCase()}: {formatNumber(s.quantity)})
+                                        </SelectItem>
+                                    ))
+                                ) : null}
+                            </SelectContent>
+                        </Select>
+                     </div>
+
                      <div className="space-y-2">
                         <div className="flex justify-between items-baseline">
                            <Label htmlFor="quantity">{t.quantityLabel}</Label>
                            <span className="text-xs text-muted-foreground">
-                            {t.inStockLabel}: {formatNumber(product.quantity)}
+                            {t.inStockLabel}: {(() => {
+                                const sizes = Array.isArray((product as any).sizes) ? (product as any).sizes : [];
+                                const sizeStock = sizes.length > 0 && selectedSize !== ''
+                                    ? Number((sizes.find((s: any) => String(s.size) === String(selectedSize))?.quantity) || 0)
+                                    : 0;
+                                return formatNumber(sizeStock);
+                            })()}
                            </span>
                         </div>
                         <FormattedInput
@@ -227,7 +284,7 @@ export function SellProductDialog({ product, open, onOpenChange }: { product: Pr
                 </div>
                 <DialogFooter className='grid grid-cols-2 gap-2'>
                     <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>{t.cancel}</Button>
-                    <Button onClick={handleSell} disabled={isSaving || totalAmount <= 0}>
+                    <Button onClick={handleSell} disabled={isSaving || totalAmount <= 0 || !selectedSize}>
                         {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         {t.sellButton}
                     </Button>

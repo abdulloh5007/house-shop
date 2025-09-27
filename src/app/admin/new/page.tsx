@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -20,26 +20,24 @@ import { app } from '@/lib/firebase-client';
 import { Loader2 } from 'lucide-react';
 import { useLanguage } from '@/components/language-provider';
 
-
 const productSchema = z.object({
     name: z.string().min(3, 'Название должно быть не менее 3 символов'),
     description: z.string().max(170, 'Описание не должно превышать 170 символов').optional(),
-    price: z.string().min(1, 'Цена обязательна'), // Reverted to price
+    price: z.string().min(1, 'Цена обязательна'),
     purchasePrice: z.string().min(1, 'Начальная цена покупки обязательна'),
-    quantity: z.string().min(1, 'Количество обязательно'),
-    sizeFrom: z.string().optional(),
-    sizeTo: z.string().optional(),
     ageFrom: z.string().optional(),
     ageTo: z.string().optional(),
     ageGroup: z.enum(['kids', 'adults']),
     gender: z.enum(['girl', 'boy', 'both']),
     productType: z.enum(['headwear', 'clothes', 'shoes']),
-    discountPercentage: z.string().optional(), // Keep optional, no default
-    originalPrice: z.string().optional(), // Keep optional
-    discountedPrice: z.string().optional(), // Keep optional
+    discountPercentage: z.string().optional(),
+    originalPrice: z.string().optional(),
+    discountedPrice: z.string().optional(),
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
+
+type SizeItem = { size: string; quantity: number };
 
 export default function NewProductPage() {
     const { lang } = useLanguage();
@@ -49,33 +47,63 @@ export default function NewProductPage() {
     const router = useRouter();
     const [isSaving, setIsSaving] = useState(false);
 
+    // New size management state
+    const [sizes, setSizes] = useState<SizeItem[]>([]);
+    const [sizeInput, setSizeInput] = useState('');
+    const [sizeQtyInput, setSizeQtyInput] = useState('');
 
     const form = useForm<ProductFormValues>({
         resolver: zodResolver(productSchema),
         defaultValues: {
             name: '',
             description: '',
-            price: '', // Reverted to price
+            price: '',
             purchasePrice: '',
-            quantity: '',
-            sizeFrom: '',
-            sizeTo: '',
             ageFrom: '',
             ageTo: '',
             ageGroup: 'kids',
             gender: 'girl',
             productType: 'clothes',
-            discountPercentage: '', // No default
-            originalPrice: '', // No default
-            discountedPrice: '', // No default
+            discountPercentage: '',
+            originalPrice: '',
+            discountedPrice: '',
         },
     });
+
+    const handleAddSize = () => {
+        const qty = parseInt((sizeQtyInput || '').replace(/\s/g, ''), 10);
+        const sizeVal = (sizeInput || '').trim();
+        if (!sizeVal || isNaN(qty) || qty <= 0) {
+            toast({
+                title: t.errorTitle,
+                description: t.specifyCorrectSizeAndQty || 'Укажите корректные размер и количество (> 0) перед добавлением.',
+                variant: 'destructive',
+            });
+            return;
+        }
+        setSizes(prev => [...prev, { size: sizeVal, quantity: qty }]);
+        setSizeInput('');
+        setSizeQtyInput('');
+    };
+
+    const handleRemoveSize = (index: number) => {
+        setSizes(prev => prev.filter((_, i) => i !== index));
+    };
 
     const onSubmit = async (data: ProductFormValues) => {
         if (images.length === 0) {
             toast({
                 title: t.errorTitle,
                 description: t.uploadAtLeastOneImage,
+                variant: 'destructive',
+            });
+            return;
+        }
+
+        if (sizes.length === 0) {
+            toast({
+                title: t.errorTitle,
+                description: t.addAtLeastOneSize || 'Добавьте хотя бы один размер.',
                 variant: 'destructive',
             });
             return;
@@ -107,14 +135,15 @@ export default function NewProductPage() {
                 processedDescription = processedDescription.replace(/\n{3,}/g, '\n\n');
             }
 
+            const totalQuantity = sizes.reduce((acc, s) => acc + s.quantity, 0);
+
             const newProduct = {
                 name: data.name,
                 description: processedDescription || null,
                 price: parseFloat(data.price.replace(/\s/g, '')),
                 purchasePrice: parseFloat(data.purchasePrice.replace(/\s/g, '')),
-                quantity: parseInt(data.quantity.replace(/\s/g, ''), 10),
-                sizeFrom: data.sizeFrom ? parseInt(data.sizeFrom.replace(/\s/g, ''), 10) : null,
-                sizeTo: data.sizeTo ? parseInt(data.sizeTo.replace(/\s/g, ''), 10) : null,
+                quantity: totalQuantity,
+                sizes: sizes.map(s => ({ size: s.size, quantity: s.quantity })),
                 ageFrom: data.ageFrom ? parseInt(data.ageFrom.replace(/\s/g, ''), 10) : null,
                 ageTo: data.ageTo ? parseInt(data.ageTo.replace(/\s/g, ''), 10) : null,
                 imageUrls: urls,
@@ -128,7 +157,7 @@ export default function NewProductPage() {
             };
 
             const db = getFirestore(app);
-            await addDoc(collection(db, "products"), newProduct);
+            await addDoc(collection(db, 'products'), newProduct);
 
             toast({
                 title: t.productSavedTitle,
@@ -136,9 +165,8 @@ export default function NewProductPage() {
             });
 
             router.push('/admin');
-
         } catch (error: any) {
-            console.error("Error saving product:", error);
+            console.error('Error saving product:', error);
             toast({
                 title: t.saveErrorTitle,
                 description: error.message || t.errorSavingProduct,
@@ -155,7 +183,6 @@ export default function NewProductPage() {
             <div className="pb-8">
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-
                         <ImageUploader images={images} setImages={setImages} />
 
                         <div className="px-4 space-y-4">
@@ -223,7 +250,7 @@ export default function NewProductPage() {
 
                             <FormField
                                 control={form.control}
-                                name="price" // Reverted to price
+                                name="price"
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>{t.productPrice}</FormLabel>
@@ -260,60 +287,44 @@ export default function NewProductPage() {
                                 )}
                             />
 
-                            <FormField
-                                control={form.control}
-                                name="quantity"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>{t.productQuantity}</FormLabel>
-                                        <FormControl>
-                                            <FormattedInput
-                                                placeholder="100"
-                                                value={field.value}
-                                                onChange={field.onChange}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <div className="flex items-center gap-2">
-                                <FormField
-                                    control={form.control}
-                                    name="sizeFrom"
-                                    render={({ field }) => (
-                                        <FormItem className="flex-1">
-                                            <FormLabel>{t.sizeRangeLabel}</FormLabel>
-                                            <FormControl>
-                                                <FormattedInput
-                                                    placeholder={t.sizeRangeFromPlaceholder}
-                                                    value={field.value || ''}
-                                                    onChange={field.onChange}
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
+                            {/* Sizes management */}
+                            <div className="space-y-2">
+                                <FormLabel>{t.sizeAndQuantity}</FormLabel>
+                                <div className="flex items-end gap-2">
+                                    <div className="flex-1">
+                                        <FormLabel>{t.sizeLabel}</FormLabel>
+                                        <Input
+                                            placeholder="36"
+                                            value={sizeInput}
+                                            onChange={(e) => setSizeInput(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="flex-1">
+                                        <FormLabel>{t.piecesLabel}</FormLabel>
+                                        <FormattedInput
+                                            placeholder="0"
+                                            value={sizeQtyInput}
+                                            onChange={setSizeQtyInput}
+                                        />
+                                    </div>
+                                    <Button type="button" onClick={handleAddSize}>
+                                        {t.add}
+                                    </Button>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {sizes.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground">{t.sizesNotAdded}</p>
+                                    ) : (
+                                        sizes.map((s, idx) => (
+                                            <div key={idx} className="flex items-center gap-2 border rounded px-2 py-1">
+                                                <span className="text-sm">{s.size}: {s.quantity} {t.quantityUnit}</span>
+                                                <Button type="button" variant="ghost" size="sm" onClick={() => handleRemoveSize(idx)}>
+                                                    {t.deleteButton}
+                                                </Button>
+                                            </div>
+                                        ))
                                     )}
-                                />
-                                <span className="pt-8 font-semibold">-</span>
-                                <FormField
-                                    control={form.control}
-                                    name="sizeTo"
-                                    render={({ field }) => (
-                                        <FormItem className="flex-1">
-                                            <FormLabel>&nbsp;</FormLabel>
-                                            <FormControl>
-                                                <FormattedInput
-                                                    placeholder={t.sizeRangeToPlaceholder}
-                                                    value={field.value || ''}
-                                                    onChange={field.onChange}
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+                                </div>
                             </div>
 
                             <div className="flex items-center gap-2">
@@ -353,7 +364,6 @@ export default function NewProductPage() {
                                     )}
                                 />
                             </div>
-
 
                             <div className="flex gap-4">
                                 <FormField
@@ -401,7 +411,7 @@ export default function NewProductPage() {
                                 />
                             </div>
 
-                            {/*DISCOUNT FIELDS (reverted to optional direct input) */}
+                            {/* DISCOUNT FIELDS */}
                             <div className="flex gap-4">
                                 <FormField
                                     control={form.control}

@@ -4,11 +4,11 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { doc, getDoc, getFirestore, collection, query, where, getDocs } from 'firebase/firestore';
 import { app } from '@/lib/firebase-client';
 import { Product } from '@/app/admin/_components/product-provider';
-import { ProductCard } from '@/components/product-card';
-import { Loader2, X, ChevronLeft, ChevronRight, ShoppingCart, Ruler, Baby, Users, PackageCheck, Tag } from 'lucide-react';
+import { Loader2, X, ChevronLeft, ChevronRight, ShoppingCart, Ruler, Baby, Users, PackageCheck, Tag, Plus, Minus } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { translations } from '@/lib/translations';
 import { useLanguage } from '@/components/language-provider';
@@ -16,11 +16,11 @@ import { cn } from '@/lib/utils';
 import useEmblaCarousel from 'embla-carousel-react';
 import { BackButton } from '@/components/back-button';
 import { useParams } from 'next/navigation';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCart } from '@/components/providers';
 import TgsPlayer from '@/components/tgs-player';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 
 // Helper to format the number with spaces
@@ -327,18 +327,20 @@ function ProductImageGallery({ imageUrls, productName, discountPercentage }: { i
     );
 }
 
-function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: React.ReactNode }) {
-    if (!value) return null;
+function FeaturePill({ icon: Icon, label, value, colorClass }: { icon: React.ElementType, label: string, value: React.ReactNode, colorClass: string }) {
     return (
-        <div className="flex items-start py-4 border-b">
-            <Icon className="h-6 w-6 text-muted-foreground mr-4 mt-1" />
-            <div className="flex-1">
-                <p className="text-sm text-muted-foreground">{label}</p>
-                <p className="font-medium text-base">{value}</p>
+        <div className="flex items-center gap-3 rounded-xl border p-3">
+            <div className={cn("h-10 w-10 flex items-center justify-center rounded-full ring-2", colorClass)}>
+                <Icon className="h-5 w-5" />
+            </div>
+            <div>
+                <p className="text-xs text-muted-foreground leading-none mb-1">{label}</p>
+                <p className="font-medium text-sm leading-tight">{value}</p>
             </div>
         </div>
-    )
+    );
 }
+
 
 function RecommendedCard({ product, t }: { product: Product; t: any }) {
     const [cardEmblaRef, cardEmblaApi] = useEmblaCarousel({ loop: true });
@@ -425,6 +427,9 @@ export default function ProductPage() {
     const { toast } = useToast();
     const { lang } = useLanguage();
     const t = translations[lang];
+    const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+    const [modalSelectedSize, setModalSelectedSize] = useState<string | number | null>(null);
+    const [modalQty, setModalQty] = useState<number>(1);
     const [noProductsAnim, setNoProductsAnim] = useState<string | null>(null);
 
     useEffect(() => {
@@ -484,14 +489,23 @@ export default function ProductPage() {
 
     const handleAddToCart = () => {
         if (!product) return;
-        const stock = (product as any).quantity ?? (product as any).stock ?? 0;
-        const isInCart = cart.items.some(i => i.id === product.id);
-        if (stock <= 0 || isInCart) return;
-        addToCart(product as any);
-        // toast({
-        //     title: t.addedToCartTitle || "Добавлено в корзину",
-        //     description: (t.addedToCartDesc || "Товар добавлен: ") + product.name,
-        // });
+        const sizes: any[] = Array.isArray((product as any).sizes) ? (product as any).sizes : [];
+        const stock = sizes.length > 0
+            ? sizes.reduce((sum, s) => sum + (Number(s.quantity) || 0), 0)
+            : ((product as any).quantity ?? (product as any).stock ?? 0);
+        if (stock <= 0) return;
+        const firstAvailSize = sizes.length > 0 ? (sizes.find((s: any) => (Number(s.quantity) || 0) > 0)?.size ?? sizes[0].size) : null;
+        setModalSelectedSize(firstAvailSize ?? null);
+        setModalQty(1);
+        setIsAddDialogOpen(true);
+    };
+
+    const handleConfirmAdd = () => {
+        if (!product) return;
+        const sizes: any[] = Array.isArray((product as any).sizes) ? (product as any).sizes : [];
+        if (sizes.length > 0 && (modalSelectedSize === null || modalSelectedSize === undefined)) return;
+        addToCart({ ...(product as any), selectedSize: modalSelectedSize, addQuantity: modalQty } as any);
+        setIsAddDialogOpen(false);
     };
 
     if (loading) {
@@ -549,39 +563,164 @@ export default function ProductPage() {
                     <div className="flex items-center gap-2">
                         <h1 className="text-2xl font-bold tracking-tight">{product.name}</h1>
                     </div>
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2">
+                    <div className="flex items-end gap-3 mt-1">
+                        <p className="text-3xl font-bold text-primary tabular-nums">{formatNumber(product.price)}</p>
                         {product.originalPrice && (
-                            <div className="flex items-center gap-1">
-                                <p className="text-xl text-muted-foreground line-through">
-                                    {formatNumber(product.originalPrice)}
-                                </p>
-                            </div>
+                            <p className="text-base text-muted-foreground line-through tabular-nums">
+                                {formatNumber(product.originalPrice)}
+                            </p>
                         )}
-                        <div className="flex items-center gap-1">
-                            <p className="text-3xl font-bold text-primary">{formatNumber(product.price)}</p>
-                        </div>
                     </div>
                 </div>
 
-                <div className="divide-y border-t border-b">
-                    <InfoRow icon={PackageCheck} label={t.productQuantity} value={`${formatNumber(product.quantity)} ${t.quantityUnit}`} />
-                    <InfoRow icon={Users} label={t.ageGroupLabel} value={getAgeGroupTranslation(product.ageGroup)} />
-                    <InfoRow icon={Baby} label={t.genderLabel} value={getGenderTranslation(product.gender)} />
-                    {product.ageFrom && product.ageTo && <InfoRow icon={Ruler} label={t.ageRangeLabel} value={`${product.ageFrom} - ${product.ageTo} лет`} />}
-                    {product.sizeFrom && product.sizeTo && <InfoRow icon={Ruler} label={t.sizeRangeLabel} value={`${product.sizeFrom} - ${product.sizeTo}`} />}
-                </div>
 
-                <Card className="shadow-lg rounded-2xl">
-                    <CardHeader>
-                        <CardTitle>Описание</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-muted-foreground whitespace-pre-wrap">
-                            {product.description || "Подробное описание товара скоро будет добавлено."}
-                        </p>
-                    </CardContent>
-                </Card>
+                {(() => {
+                    const sizes: any[] = Array.isArray((product as any).sizes) ? (product as any).sizes : [];
+                    const stock = sizes.length > 0
+                        ? sizes.reduce((sum, s) => sum + (Number(s.quantity) || 0), 0)
+                        : ((product as any).quantity ?? (product as any).stock ?? 0);
+
+                    return (
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-3">
+                                <FeaturePill
+                                    icon={Users}
+                                    label={t.ageGroupLabel}
+                                    value={getAgeGroupTranslation(product.ageGroup)}
+                                    colorClass={'text-indigo-600 ring-indigo-200 bg-indigo-50'}
+                                />
+                                <FeaturePill
+                                    icon={Baby}
+                                    label={t.genderLabel}
+                                    value={getGenderTranslation(product.gender)}
+                                    colorClass={'text-pink-600 ring-pink-200 bg-pink-50'}
+                                />
+                                {product.ageFrom && product.ageTo && (
+                                    <FeaturePill
+                                        icon={Ruler}
+                                        label={t.ageRangeLabel}
+                                        value={`${product.ageFrom} - ${product.ageTo} лет`}
+                                        colorClass={'text-amber-600 ring-amber-200 bg-amber-50'}
+                                    />
+                                )}
+                                {((!Array.isArray((product as any).sizes)) || sizes.length === 0) && product.sizeFrom && product.sizeTo && (
+                                    <FeaturePill
+                                        icon={Ruler}
+                                        label={t.sizeRangeLabel}
+                                        value={`${product.sizeFrom} - ${product.sizeTo}`}
+                                        colorClass={'text-violet-600 ring-violet-200 bg-violet-50'}
+                                    />
+                                )}
+                            </div>
+
+                        </div>
+                    );
+                })()}
+
+                <div>
+                    <Accordion type="single" collapsible>
+                        <AccordionItem value="description">
+                            <AccordionTrigger>Описание</AccordionTrigger>
+                            <AccordionContent>
+                                <p className="text-muted-foreground whitespace-pre-wrap">
+                                    {product.description || 'Подробное описание товара скоро будет добавлено.'}
+                                </p>
+                            </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
+                </div>
             </div>
+
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Добавить в корзину</DialogTitle>
+                        <DialogDescription>Выберите параметры перед добавлением</DialogDescription>
+                    </DialogHeader>
+
+                    {(() => {
+                        const sizes: any[] = Array.isArray((product as any).sizes) ? (product as any).sizes : [];
+                        const maxQty = (() => {
+                            if (sizes.length > 0) {
+                                const entry = sizes.find((s: any) => String(s.size) === String(modalSelectedSize));
+                                return entry ? (Number(entry.quantity) || 0) : 0;
+                            }
+                            return (product as any).quantity ?? (product as any).stock ?? 0;
+                        })();
+
+                        return (
+                            <div className="space-y-4">
+                                {sizes.length > 0 && (
+                                    <div className="space-y-2">
+                                        <p className="text-sm text-muted-foreground">Размер</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {sizes.map((s: any, idx: number) => {
+                                                const disabled = (Number(s.quantity) || 0) <= 0;
+                                                const active = String(modalSelectedSize) === String(s.size);
+                                                return (
+                                                    <button
+                                                        key={idx}
+                                                        disabled={disabled}
+                                                        onClick={() => setModalSelectedSize(s.size)}
+                                                        className={cn(
+                                                            'px-3 py-2 rounded-lg text-sm border transition-all',
+                                                            active ? 'border-primary bg-primary/10 text-primary' : 'hover:bg-muted',
+                                                            disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                                                        )}
+                                                    >
+                                                        <span className="font-medium">{String(s.size)}</span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-sm text-muted-foreground">Количество</p>
+                                        <span className="text-xs text-muted-foreground">Доступно: {formatNumber(maxQty)} {t.quantityUnit}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Button type="button" variant="outline" size="icon" className="h-10 w-10" onClick={() => setModalQty((q) => Math.max(1, q - 1))} disabled={modalQty <= 1}>
+                                            <Minus className="h-4 w-4" />
+                                        </Button>
+                                        <Input type="number" className="w-20 text-center" value={modalQty} min={1} max={Math.max(1, maxQty)} onChange={(e) => {
+                                            const v = Number(e.target.value);
+                                            if (Number.isNaN(v)) return;
+                                            setModalQty(Math.min(Math.max(1, v), Math.max(1, maxQty)));
+                                        }} />
+                                        <Button type="button" variant="outline" size="icon" className="h-10 w-10" onClick={() => setModalQty((q) => Math.min(q + 1, Math.max(1, maxQty)))} disabled={modalQty >= Math.max(1, maxQty)}>
+                                            <Plus className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()}
+
+                    <DialogFooter className='grid grid-cols-2 items-center gap-2'>
+                        <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Отмена</Button>
+                        {(() => {
+                            const sizes: any[] = Array.isArray((product as any).sizes) ? (product as any).sizes : [];
+                            const requireSize = sizes.length > 0;
+                            const maxQty = (() => {
+                                if (sizes.length > 0) {
+                                    const entry = sizes.find((s: any) => String(s.size) === String(modalSelectedSize));
+                                    return entry ? (Number(entry.quantity) || 0) : 0;
+                                }
+                                return (product as any).quantity ?? (product as any).stock ?? 0;
+                            })();
+                            const disabled = (requireSize && (modalSelectedSize === null || modalSelectedSize === undefined)) || maxQty <= 0;
+                            return (
+                                <Button onClick={handleConfirmAdd} disabled={disabled}>
+                                    <ShoppingCart className="h-4 w-4" /> {t.addToCartButton || 'Добавить в корзину'}
+                                </Button>
+                            );
+                        })()}
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Recommendations block */}
             {recommendations.length > 0 && (
@@ -602,19 +741,21 @@ export default function ProductPage() {
             )}
 
             {/* Fixed Add to Cart Button */}
-            <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm border-t p-4 z-50">
-                {(() => {
-                    const stock = (product as any).quantity ?? (product as any).stock ?? 0;
-                    const isInCart = cart.items.some(i => i.id === product.id);
-                    const disabled = stock <= 0 || isInCart;
-                    return (
+            {(() => {
+                const sizes: any[] = Array.isArray((product as any).sizes) ? (product as any).sizes : [];
+                const stock = sizes.length > 0
+                    ? sizes.reduce((sum, s) => sum + (Number(s.quantity) || 0), 0)
+                    : ((product as any).quantity ?? (product as any).stock ?? 0);
+                const disabled = stock <= 0;
+                return (
+                    <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm p-4 z-50 border-t">
                         <Button size="lg" className="w-full h-12 text-base" onClick={handleAddToCart} disabled={disabled}>
                             <ShoppingCart className="mr-2 h-5 w-5" />
-                            {isInCart ? (t.inCartButton || 'В корзине') : (t.addToCartButton || 'Добавить в корзину')}
+                            {t.addToCartButton || 'Добавить в корзину'}
                         </Button>
-                    );
-                })()}
-            </div>
+                    </div>
+                );
+            })()}
         </div>
     );
 }

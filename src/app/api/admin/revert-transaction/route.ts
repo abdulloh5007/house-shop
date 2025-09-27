@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     if (transactionData.deleted) {
       return NextResponse.json({ error: 'Transaction has already been reverted.' }, { status: 400 });
     }
-    const { productId, saleId, quantity, totalIncome, realProfit } = transactionData;
+    const { productId, saleId, quantity, totalIncome, realProfit, size } = transactionData;
 
     if (!productId || !saleId || !quantity || totalIncome === undefined || realProfit === undefined) {
         return NextResponse.json({ error: 'Transaction data is incomplete and cannot be reverted.' }, { status: 400 });
@@ -59,7 +59,20 @@ export async function POST(req: NextRequest) {
         console.warn(`Product ${productId} not found while reverting transaction. Stock will not be updated.`);
       } else {
         // 1. Return the sold quantity to the product's stock
-        t.update(productRef, { quantity: FieldValue.increment(quantity) });
+        // Also return the quantity to the specific size bucket if available
+        const prod = productDoc.data() as any;
+        const sizesArr = Array.isArray(prod.sizes) ? prod.sizes : [];
+        if (size !== undefined && size !== null && sizesArr.length > 0) {
+          const newSizes = sizesArr.map((s: any) => {
+            if (String(s.size) === String(size)) {
+              return { ...s, quantity: Number(s.quantity || 0) + Number(quantity || 0) };
+            }
+            return s;
+          });
+          t.update(productRef, { quantity: FieldValue.increment(quantity), sizes: newSizes });
+        } else {
+          t.update(productRef, { quantity: FieldValue.increment(quantity) });
+        }
       }
 
       // 2. Subtract income and profit from the main balance

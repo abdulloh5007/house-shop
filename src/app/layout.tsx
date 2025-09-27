@@ -11,8 +11,8 @@ import { LanguageProvider } from '@/components/language-provider';
 import { OfflineIndicator } from '@/components/offline-indicator';
 
 export const metadata: Metadata = {
-  title: 'NeonCart',
-  description: 'A modern e-commerce experience.',
+  title: 'House-Shop',
+  description: 'House-Shop удобный магазин в формате Telegram Mini App',
 };
 
 export default function RootLayout({

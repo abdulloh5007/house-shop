@@ -110,38 +110,51 @@ type CartAction =
 const cartReducer = (state: CartState, action: CartAction): CartState => {
   switch (action.type) {
     case 'ADD_ITEM': {
-      // Normalize product from different shapes (admin provider vs lib types)
+      // Normalize product and support size/quantity selection
       const product = action.payload as any;
-      const id = product.id;
-      const name = product.name;
+      const baseId = product.id;
+      const selectedSize = product.selectedSize ?? null;
+      const addQuantity = Math.max(1, Number(product.addQuantity) || 1);
+      const nameBase = product.name;
       const price = typeof product.price === 'number' ? product.price : parseFloat(String(product.price || '0').replace(/\s/g, '')) || 0;
       const imageUrl = product.imageUrl || (Array.isArray(product.imageUrls) ? product.imageUrls[0] : undefined) || '';
-      const maxQuantity = product.quantity ?? product.stock ?? undefined;
+
+      // Determine stock limit (per-size or global)
+      let maxQuantity: number | undefined = undefined;
+      if (Array.isArray(product.sizes) && selectedSize != null) {
+        const sizeEntry = product.sizes.find((s: any) => String(s.size) === String(selectedSize));
+        maxQuantity = sizeEntry ? (Number(sizeEntry.quantity) || 0) : 0;
+      } else {
+        maxQuantity = product.quantity ?? product.stock ?? undefined;
+      }
+
+      const id = selectedSize != null ? `${baseId}__${selectedSize}` : baseId;
+      const displayName = selectedSize != null ? `${nameBase} (${selectedSize})` : nameBase;
 
       const existingItem = state.items.find((item) => item.id === id);
       if (existingItem) {
-        const nextQty = existingItem.quantity + 1;
-        if (existingItem.maxQuantity !== undefined && nextQty > existingItem.maxQuantity) {
-          // Do not exceed available stock
-          return state;
-        }
+        const nextQty = existingItem.quantity + addQuantity;
+        const max = existingItem.maxQuantity ?? (maxQuantity ?? Infinity);
+        const finalQty = Math.min(nextQty, max);
         return {
           ...state,
           items: state.items.map((item) =>
-            item.id === id ? { ...item, quantity: nextQty } : item
+            item.id === id ? { ...item, quantity: finalQty, maxQuantity: max } : item
           ),
         };
       }
+
+      const initialQty = Math.min(addQuantity, maxQuantity ?? addQuantity);
       return {
         ...state,
         items: [
           ...state.items,
           {
             id,
-            name,
+            name: displayName,
             price,
             imageUrl,
-            quantity: 1,
+            quantity: initialQty,
             maxQuantity,
           },
         ],

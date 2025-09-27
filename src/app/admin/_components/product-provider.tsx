@@ -14,12 +14,19 @@ export interface Product {
   imageUrls: string[];
   ageGroup: 'kids' | 'adults';
   gender: 'girl' | 'boy' | 'both';
+  // legacy optional range fields
   sizeFrom?: number;
   sizeTo?: number;
   ageFrom?: number;
   ageTo?: number;
+  // pricing
+  purchasePrice?: number;
   originalPrice?: number;
   discountPercentage?: number;
+  discountedPrice?: number;
+  // sizes list
+  sizes?: { size: string | number; quantity: number }[];
+  // misc
   description?: string;
 }
 

@@ -92,11 +92,23 @@ export function CartSheet() {
                       className="rounded-md object-cover"
                     />
                     <div className="flex-grow">
-                      <p className="font-medium">{item.name}</p>
+                      <p className="font-medium">{item.name.replace(/\s*\([^)]*\)\s*$/, '')}</p>
+                      {(() => {
+                        const nameMatch = item.name.match(/\(([^)]+)\)$/);
+                        const parsedFromName = nameMatch ? nameMatch[1] : null;
+                        const parsedFromId = typeof item.id === 'string' && item.id.includes('__') ? item.id.split('__')[1] : null;
+                        const size = (item as any).selectedSize ?? parsedFromId ?? parsedFromName;
+                        return size ? (
+                          <p className="text-xs text-muted-foreground">{t.sizeLabel || 'Размер'}: {String(size)}</p>
+                        ) : null;
+                      })()}
+                      <p className="text-xs text-muted-foreground">
+                        {t.quantityShort || 'Кол-во:'} {item.quantity} {t.quantityUnit || 'шт.'}
+                      </p>
                       <p className="text-sm text-muted-foreground">
                         {formatNumber(item.price)}
                       </p>
-                                          </div>
+                    </div>
                     <div className="text-right">
                        <Button
                         variant="ghost"

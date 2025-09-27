@@ -26,11 +26,8 @@ type ImageState = { file?: File; url: string };
 const productSchema = z.object({
     name: z.string().min(3, 'Название должно быть не менее 3 символов'),
     description: z.string().max(170, 'Описание не должно превышать 170 символов').optional(),
-    price: z.string().min(1, 'Цена обязательна'), // Reverted to price
+    price: z.string().min(1, 'Цена обязательна'),
     purchasePrice: z.string().min(1, 'Начальная цена покупки обязательна'),
-    quantity: z.string().min(1, 'Количество обязательно'),
-    sizeFrom: z.string().optional(),
-    sizeTo: z.string().optional(),
     ageFrom: z.string().optional(),
     ageTo: z.string().optional(),
     ageGroup: z.enum(['kids', 'adults']),
@@ -52,6 +49,11 @@ export default function EditProductPage() {
     const [isSaving, setIsSaving] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
+    // Sizes state
+    const [sizes, setSizes] = useState<{ size: string; quantity: number }[]>([]);
+    const [sizeInput, setSizeInput] = useState('');
+    const [sizeQtyInput, setSizeQtyInput] = useState('');
+
     const form = useForm<ProductFormValues>({
         resolver: zodResolver(productSchema),
         defaultValues: {
@@ -59,9 +61,6 @@ export default function EditProductPage() {
             description: '',
             price: '',
             purchasePrice: '',
-            quantity: '',
-            sizeFrom: '',
-            sizeTo: '',
             ageFrom: '',
             ageTo: '',
             ageGroup: 'kids',
@@ -90,9 +89,6 @@ export default function EditProductPage() {
                         description: productData.description || '',
                         price: String(productData.price),
                         purchasePrice: String(productData.purchasePrice || 0),
-                        quantity: String(productData.quantity),
-                        sizeFrom: productData.sizeFrom ? String(productData.sizeFrom) : '',
-                        sizeTo: productData.sizeTo ? String(productData.sizeTo) : '',
                         ageFrom: productData.ageFrom ? String(productData.ageFrom) : '',
                         ageTo: productData.ageTo ? String(productData.ageTo) : '',
                         ageGroup: productData.ageGroup,
@@ -102,6 +98,13 @@ export default function EditProductPage() {
                     // Initialize images state with existing URLs
                     const existingImages = productData.imageUrls.map((url: string) => ({ url }));
                     setImages(existingImages);
+                    // Initialize sizes
+                    const loadedSizes = Array.isArray(productData.sizes) ? productData.sizes : [];
+                    setSizes(
+                        loadedSizes
+                            .filter((s: any) => s && s.size !== undefined && s.quantity !== undefined)
+                            .map((s: any) => ({ size: String(s.size), quantity: Number(s.quantity) }))
+                    );
                 } else {
                     toast({ title: t.errorTitle, description: t.productNotFound, variant: 'destructive' });
                     router.push('/admin');
@@ -119,11 +122,11 @@ export default function EditProductPage() {
 
     const onSubmit = async (data: ProductFormValues) => {
         if (images.length === 0) {
-            toast({
-                title: t.errorTitle,
-                description: t.uploadAtLeastOneImage,
-                variant: 'destructive',
-            });
+            toast({ title: t.errorTitle, description: t.uploadAtLeastOneImage, variant: 'destructive' });
+            return;
+        }
+        if (sizes.length === 0) {
+            toast({ title: t.errorTitle, description: 'Добавьте хотя бы один размер.', variant: 'destructive' });
             return;
         }
         setIsSaving(true);
@@ -157,12 +160,9 @@ export default function EditProductPage() {
 
             // Step 2: Combine old URLs and new URLs in the correct order
             const finalImageUrls = images.map(img => {
-                // If it's an old image, its URL is already what we need.
                 if (!img.file) return img.url;
-                // If it's a new image, find its uploaded URL. We assume the upload order is preserved.
-                // This is a bit fragile but works for this case. A more robust solution might map files to URLs.
                 const newUrl = uploadedImageUrls.shift();
-                if (!newUrl) throw new Error("Mismatch between new files and uploaded URLs.");
+                if (!newUrl) throw new Error('Mismatch between new files and uploaded URLs.');
                 return newUrl;
             });
 
@@ -171,14 +171,15 @@ export default function EditProductPage() {
                 processedDescription = processedDescription.replace(/\n{3,}/g, '\n\n');
             }
 
+            const totalQuantity = sizes.reduce((acc, s) => acc + s.quantity, 0);
+
             const updatedProduct = {
                 name: data.name,
                 description: processedDescription || null,
                 price: parseFloat(data.price.replace(/\s/g, '')),
                 purchasePrice: parseFloat(data.purchasePrice.replace(/\s/g, '')),
-                quantity: parseInt(data.quantity.replace(/\s/g, ''), 10),
-                sizeFrom: data.sizeFrom ? parseInt(data.sizeFrom.replace(/\s/g, ''), 10) : null,
-                sizeTo: data.sizeTo ? parseInt(data.sizeTo.replace(/\s/g, ''), 10) : null,
+                quantity: totalQuantity,
+                sizes: sizes.map(s => ({ size: s.size, quantity: s.quantity })),
                 ageFrom: data.ageFrom ? parseInt(data.ageFrom.replace(/\s/g, ''), 10) : null,
                 ageTo: data.ageTo ? parseInt(data.ageTo.replace(/\s/g, ''), 10) : null,
                 imageUrls: finalImageUrls,
@@ -190,20 +191,12 @@ export default function EditProductPage() {
 
             await updateDoc(productDocRef, updatedProduct as any);
 
-            toast({
-                title: t.productUpdatedTitle,
-                description: `${t.productLabel} "${data.name}" ${t.wasSuccessfullyUpdated}`,
-            });
+            toast({ title: t.productUpdatedTitle, description: `${t.productLabel} "${data.name}" ${t.wasSuccessfullyUpdated}` });
 
             router.push('/admin');
-
         } catch (error: any) {
-            console.error("Error updating product:", error);
-            toast({
-                title: t.updateErrorTitle,
-                description: error.message || t.errorUpdatingProduct,
-                variant: 'destructive',
-            });
+            console.error('Error updating product:', error);
+            toast({ title: t.updateErrorTitle, description: error.message || t.errorUpdatingProduct, variant: 'destructive' });
         } finally {
             setIsSaving(false);
         }
@@ -328,60 +321,53 @@ export default function EditProductPage() {
                                 )}
                             />
 
-                            <FormField
-                                control={form.control}
-                                name="quantity"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>{t.productQuantity}</FormLabel>
-                                        <FormControl>
-                                            <FormattedInput
-                                                placeholder="100"
-                                                value={field.value}
-                                                onChange={field.onChange}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <div className="flex items-center gap-2">
-                                <FormField
-                                    control={form.control}
-                                    name="sizeFrom"
-                                    render={({ field }) => (
-                                        <FormItem className="flex-1">
-                                            <FormLabel>{t.sizeRangeLabel}</FormLabel>
-                                            <FormControl>
-                                                <FormattedInput
-                                                    placeholder={t.sizeRangeFromPlaceholder}
-                                                    value={field.value || ''}
-                                                    onChange={field.onChange}
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
+                            {/* Sizes management */}
+                            <div className="space-y-2">
+                                <div className="flex items-end gap-2">
+                                    <div className="flex-1">
+                                        <FormLabel>{t.sizeLabel}</FormLabel>
+                                        <Input
+                                            placeholder="36"
+                                            value={sizeInput}
+                                            onChange={(e) => setSizeInput(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="flex-1">
+                                        <FormLabel>{t.piecesLabel}</FormLabel>
+                                        <FormattedInput
+                                            placeholder="0"
+                                            value={sizeQtyInput}
+                                            onChange={setSizeQtyInput}
+                                        />
+                                    </div>
+                                    <Button type="button" onClick={() => {
+                                        const qty = parseInt((sizeQtyInput || '').replace(/\s/g, ''), 10);
+                                        const sizeVal = (sizeInput || '').trim();
+                                        if (!sizeVal || isNaN(qty) || qty <= 0) {
+                                            toast({ title: t.errorTitle, description: (t.specifyCorrectSizeAndQty || 'Укажите корректные размер и количество (> 0) перед добавлением.'), variant: 'destructive' });
+                                            return;
+                                        }
+                                        setSizes(prev => [...prev, { size: sizeVal, quantity: qty }]);
+                                        setSizeInput('');
+                                        setSizeQtyInput('');
+                                    }}>
+                                        {t.add}
+                                    </Button>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {sizes.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground">{t.sizesNotAdded}</p>
+                                    ) : (
+                                        sizes.map((s, idx) => (
+                                            <div key={idx} className="flex items-center gap-2 border rounded px-2 py-1">
+                                                <span className="text-sm">{s.size}: {s.quantity} {t.quantityUnit}</span>
+                                                <Button type="button" variant="ghost" size="sm" onClick={() => setSizes(prev => prev.filter((_, i) => i !== idx))}>
+                                                    {t.deleteButton}
+                                                </Button>
+                                            </div>
+                                        ))
                                     )}
-                                />
-                                <span className="pt-8 font-semibold">-</span>
-                                <FormField
-                                    control={form.control}
-                                    name="sizeTo"
-                                    render={({ field }) => (
-                                        <FormItem className="flex-1">
-                                            <FormLabel>&nbsp;</FormLabel>
-                                            <FormControl>
-                                                <FormattedInput
-                                                    placeholder={t.sizeRangeToPlaceholder}
-                                                    value={field.value || ''}
-                                                    onChange={field.onChange}
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+                                </div>
                             </div>
 
                             <div className="flex items-center gap-2">
