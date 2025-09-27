@@ -4,12 +4,12 @@ import Link from "next/link";
 import { CheckCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export default function OrderSuccessPage({
+export default async function OrderSuccessPage({
   searchParams,
 }: {
-  searchParams: { orderId?: string };
+  searchParams: Promise<{ orderId?: string }>;
 }) {
-  const orderId = searchParams.orderId;
+  const { orderId } = await searchParams;
 
   return (
     <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[calc(100vh-14rem)]">

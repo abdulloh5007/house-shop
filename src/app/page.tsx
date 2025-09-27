@@ -51,6 +51,8 @@ function HomePageProductGallery({ product }: { product: Product }) {
   const activeImgRef = useRef<HTMLImageElement | null>(null);
   const pinchRef = useRef({ startDist: 0, startScale: 1, startPos: { x: 0, y: 0 }, focal: { x: 0, y: 0 } });
   const dragRef = useRef({ startClientX: 0, startClientY: 0, startPos: { x: 0, y: 0 } });
+  const pointersRef = useRef(new Map<number, { x: number; y: number }>());
+  const pinchingRef = useRef(false);
   const maxScale = 4;
 
   const clampPos = useCallback((x: number, y: number, s: number) => {
@@ -260,29 +262,113 @@ function HomePageProductGallery({ product }: { product: Product }) {
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (scale <= 1) return;
-    const target = e.currentTarget;
-    try { (target as Element).setPointerCapture(e.pointerId); } catch { }
-    isPanningRef.current = true;
-    dragRef.current.startClientX = e.clientX;
-    dragRef.current.startClientY = e.clientY;
-    dragRef.current.startPos = { ...pos };
-    e.stopPropagation();
+    // Track pointers for pinch gestures
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    const pointerCount = pointersRef.current.size;
+
+    if (pointerCount === 2 && activeSlideRef.current) {
+      // Initialize pinch
+      const pts = Array.from(pointersRef.current.values());
+      const dx = pts[1].x - pts[0].x;
+      const dy = pts[1].y - pts[0].y;
+      const dist = Math.hypot(dx, dy);
+
+      const rect = activeSlideRef.current.getBoundingClientRect();
+      const cx = (pts[0].x + pts[1].x) / 2 - (rect.left + rect.width / 2);
+      const cy = (pts[0].y + pts[1].y) / 2 - (rect.top + rect.height / 2);
+
+      pinchRef.current.startDist = dist;
+      pinchRef.current.startScale = scale;
+      pinchRef.current.startPos = { ...pos };
+      pinchRef.current.focal = { x: cx, y: cy };
+      pinchingRef.current = true;
+
+      try { (e.currentTarget as Element).setPointerCapture(e.pointerId); } catch { }
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+
+    // Single-finger pan only when zoomed
+    if (pointerCount === 1 && scale > 1) {
+      try { (e.currentTarget as Element).setPointerCapture(e.pointerId); } catch { }
+      isPanningRef.current = true;
+      dragRef.current.startClientX = e.clientX;
+      dragRef.current.startClientY = e.clientY;
+      dragRef.current.startPos = { ...pos };
+      e.stopPropagation();
+      return;
+    }
+
+    // If not zoomed and single finger, allow carousel swipe (do nothing)
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isPanningRef.current) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const dx = e.clientX - dragRef.current.startClientX;
-    const dy = e.clientY - dragRef.current.startClientY;
-    const newPos = { x: dragRef.current.startPos.x + dx, y: dragRef.current.startPos.y + dy };
-    const clamped = clampPos(newPos.x, newPos.y, scale);
-    setPos(clamped);
+    // Update tracked pointer
+    if (pointersRef.current.has(e.pointerId)) {
+      pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+
+    const pointerCount = pointersRef.current.size;
+
+    // Pinch-to-zoom with two fingers
+    if (pointerCount === 2 && activeSlideRef.current) {
+      const pts = Array.from(pointersRef.current.values());
+      const dx = pts[1].x - pts[0].x;
+      const dy = pts[1].y - pts[0].y;
+      const dist = Math.hypot(dx, dy);
+
+      const rect = activeSlideRef.current.getBoundingClientRect();
+      const cx = (pts[0].x + pts[1].x) / 2 - (rect.left + rect.width / 2);
+      const cy = (pts[0].y + pts[1].y) / 2 - (rect.top + rect.height / 2);
+
+      const start = pinchRef.current;
+      const rawScale = start.startScale * (dist / Math.max(1, start.startDist));
+      const newScale = Math.min(maxScale, Math.max(1, rawScale));
+      const f = newScale / start.startScale;
+
+      // Keep the content under the start focal point stationary while following the current focal movement
+      const nx = start.startPos.x + (1 - f) * start.focal.x + (cx - start.focal.x);
+      const ny = start.startPos.y + (1 - f) * start.focal.y + (cy - start.focal.y);
+      const clamped = clampPos(nx, ny, newScale);
+
+      setScale(newScale);
+      setPos(clamped);
+
+      pinchingRef.current = true;
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+
+    // Single-finger panning when zoomed
+    if (isPanningRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      const dx = e.clientX - dragRef.current.startClientX;
+      const dy = e.clientY - dragRef.current.startClientY;
+      const newPos = { x: dragRef.current.startPos.x + dx, y: dragRef.current.startPos.y + dy };
+      const clamped = clampPos(newPos.x, newPos.y, scale);
+      setPos(clamped);
+      return;
+    }
+
+    // Otherwise, let carousel handle swipes
   };
 
   const handlePointerUp = (e?: React.PointerEvent<HTMLDivElement>) => {
-    if (isPanningRef.current) {
+    // Remove pointer from tracking
+    if (e) {
+      pointersRef.current.delete(e.pointerId);
+    }
+
+    // End pinch if fewer than two pointers remain
+    if (pointersRef.current.size < 2) {
+      pinchingRef.current = false;
+    }
+
+    if (isPanningRef.current || pinchingRef.current) {
       isPanningRef.current = false;
       try { (e?.currentTarget as Element)?.releasePointerCapture?.(e?.pointerId); } catch { }
       e?.stopPropagation();

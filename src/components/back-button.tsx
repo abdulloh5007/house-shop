@@ -1,5 +1,6 @@
 'use client';
 import { useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 
 // Define the type for the Telegram Web App object
 interface BackButton {
@@ -22,12 +23,24 @@ declare global {
 }
 
 export function BackButton() {
+  const pathname = usePathname();
+  const router = useRouter();
   useEffect(() => {
     if (window.Telegram && window.Telegram.WebApp) {
       const tg = window.Telegram.WebApp;
 
       const handleBackClick = () => {
-        window.history.back();
+        const normalized = (pathname || '').replace(/\/+$/, '');
+        const isAdminTop =
+          normalized === '/admin' ||
+          normalized === '/admin/analytics' ||
+          normalized === '/admin/wallet' ||
+          normalized === '/admin/settings';
+        if (isAdminTop) {
+          router.replace('/profile');
+        } else {
+          window.history.back();
+        }
       };
       
       tg.BackButton.show();
@@ -40,7 +53,7 @@ export function BackButton() {
         tg.BackButton.hide();
       };
     }
-  }, []);
+  }, [pathname, router]);
 
   return null; // This component does not render anything in the DOM
 }

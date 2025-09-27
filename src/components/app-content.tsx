@@ -26,6 +26,7 @@ export function AppContent({ children }: { children: React.ReactNode }) {
   const isAdminSection = pathname.startsWith('/admin');
 
   const isProductPage = pathname.startsWith('/product/');
+  const isCheckoutPage = pathname.startsWith('/checkout');
 
   useEffect(() => {
     if (window.Telegram && window.Telegram.WebApp) {
@@ -88,7 +89,7 @@ export function AppContent({ children }: { children: React.ReactNode }) {
     <>
       <div className="relative flex-grow">
         <main className="pb-24">{children}</main>
-        {!isProductPage && <BottomNavbar />}
+        {!isProductPage && !isCheckoutPage && <BottomNavbar />}
       </div>
       {!loading && user && <Footer />}
     </>

@@ -207,5 +207,25 @@
   "addToCartTitle": "Savatchaga qo'shish",
   "addToCartDesc": "Qo'shishdan oldin parametrlarni tanlang",
   "availableLabel": "Mavjud",
-  "description": "Tavsif"
+  "description": "Tavsif",
+
+  "checkoutTitle": "Buyurtmani rasmiylashtirish",
+  "orderSummary": "Buyurtma xulosasi",
+  "shippingAndPayment": "Yetkazib berish va to'lov",
+  "nameSurnameInDev": "Ism va familiya — hozircha ishlab chiqilmoqda",
+  "emailLabel": "Email",
+  "addressLabel": "Manzil",
+  "cityLabel": "Shahar",
+  "zipCodeLabel": "Pochta indeksi",
+  "emailPlaceholder": "you@example.com",
+  "addressPlaceholder": "123 Misol ko'chasi",
+  "placeOrderButton": "Buyurtma berish",
+  "orderFailedTitle": "Buyurtma bajarilmadi",
+  "orderFailedDescGeneric": "Buyurtmani rasmiylashtirishda xatolik. Qaytadan urinib ko'ring.",
+  "inDevelopment": "Ishlab chiqilmoqda",
+
+  "emailInvalid": "To'g'ri email kiriting.",
+  "addressMin": "Manzil juda qisqa.",
+  "cityMin": "Shahar juda qisqa.",
+  "zipInvalid": "5 xonali indeks kiriting."
 }

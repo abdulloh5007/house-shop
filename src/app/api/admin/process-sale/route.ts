@@ -26,8 +26,48 @@ export async function POST(req: NextRequest) {
 
     const batch = db.batch();
 
+    // Persist the order itself for admin/orders UI
+    try {
+      const orderRef = db.collection('orders').doc(order.id);
+      const itemsNormalized = Array.isArray(order.items)
+        ? order.items.map((it: any) => {
+            const idStr = String(it.id ?? '');
+            const pid = idStr.includes('__') ? idStr.split('__')[0] : String(it.productId ?? idStr);
+            const parsedFromId = idStr.includes('__') ? idStr.split('__')[1] : null;
+            const nameStr = String(it.name ?? '');
+            const nameMatch = nameStr.match(/\(([^)]+)\)$/);
+            const parsedFromName = nameMatch ? nameMatch[1] : null;
+            const sz = it.selectedSize ?? parsedFromId ?? parsedFromName ?? null;
+            return {
+              productId: pid,
+              name: it.name,
+              price: it.price,
+              imageUrl: it.imageUrl,
+              quantity: it.quantity,
+              selectedSize: sz,
+            };
+          })
+        : [];
+      batch.set(orderRef, {
+        ...order,
+        items: itemsNormalized,
+        status: 'pending',
+        createdAt: FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      console.error('Failed to queue order persistence:', e);
+    }
+
     for (const item of order.items) {
-      const productRef = db.collection('products').doc(item.id);
+      const idStr = String((item as any).id ?? '');
+      const productId = idStr.includes('__') ? idStr.split('__')[0] : (String((item as any).productId ?? idStr));
+      const parsedSizeFromId = idStr.includes('__') ? idStr.split('__')[1] : null;
+      const nameStr = String((item as any).name ?? '');
+      const nameMatch = nameStr.match(/\(([^)]+)\)$/);
+      const parsedSizeFromName = nameMatch ? nameMatch[1] : null;
+      const selectedSize = (item as any).selectedSize ?? parsedSizeFromId ?? parsedSizeFromName ?? null;
+
+      const productRef = db.collection('products').doc(productId);
       const productSnap = await productRef.get();
 
       if (!productSnap.exists) {
@@ -57,8 +97,10 @@ export async function POST(req: NextRequest) {
         purchasePrice: purchasePrice, 
         totalIncome: itemIncome,
         totalProfit: itemProfit,
+        productId: productId,
         productName: item.name,
         productPrice: item.price, 
+        size: selectedSize,
         transactionHash: transactionHash, // Store hash here
         orderId: order.id, // Link to the original order
         originalPrice: productData.originalPrice || null, // Use null instead of undefined
@@ -70,9 +112,10 @@ export async function POST(req: NextRequest) {
       const balanceTransactionsRef = db.collection('settings').doc('balance').collection('transactions').doc();
       batch.set(balanceTransactionsRef, {
         createdAt: FieldValue.serverTimestamp(),
-        productId: item.id,
+        productId: productId,
         productName: item.name,
         quantity: item.quantity,
+        size: selectedSize,
         sellingPrice: item.price,
         purchasePrice: purchasePrice,
         totalIncome: itemIncome,
@@ -89,7 +132,18 @@ export async function POST(req: NextRequest) {
       if (currentStock < item.quantity) {
         throw new Error(`Not enough stock for product ${item.name}. Available: ${currentStock}, Ordered: ${item.quantity}`);
       }
-      batch.update(productRef, { quantity: FieldValue.increment(-item.quantity) });
+
+      const sizesArr = Array.isArray(productData?.sizes) ? productData!.sizes : [];
+      if (selectedSize !== null && sizesArr.length > 0) {
+        const newSizes = sizesArr.map((s: any) =>
+          String(s.size) === String(selectedSize)
+            ? { ...s, quantity: Math.max(0, Number(s.quantity || 0) - Number(item.quantity || 0)) }
+            : s
+        );
+        batch.update(productRef, { quantity: FieldValue.increment(-item.quantity), sizes: newSizes });
+      } else {
+        batch.update(productRef, { quantity: FieldValue.increment(-item.quantity) });
+      }
     }
 
     // Update wallet balances in settings/balance

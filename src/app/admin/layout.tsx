@@ -10,6 +10,7 @@ import { translations } from "@/lib/translations";
 import { useLanguage } from "@/components/language-provider";
 import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
+import { BackButton } from "@/components/back-button";
 
 function AdminBottomNavbar() {
     const pathname = usePathname(); 
@@ -53,6 +54,8 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const { user, profile, loading } = useAuth();
+  const pathname = usePathname();
+  const hideAdminBottom = pathname.startsWith('/admin/users') || pathname.startsWith('/admin/orders');
 
   if (loading) {
     return (
@@ -79,8 +82,9 @@ export default function AdminLayout({
 
   return (
     <ProductProvider>
-        <main className="pb-24">{children}</main>
-        <AdminBottomNavbar />
+        {hideAdminBottom && <BackButton />}
+        <main className={hideAdminBottom ? "" : "pb-24"}>{children}</main>
+        {!hideAdminBottom && <AdminBottomNavbar />}
     </ProductProvider>
   );
 }

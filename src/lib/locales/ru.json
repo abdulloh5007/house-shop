@@ -223,5 +223,25 @@
   "addToCartTitle": "Добавить в корзину",
   "addToCartDesc": "Выберите параметры перед добавлением",
   "availableLabel": "Доступно",
-  "description": "Описание"
+  "description": "Описание",
+
+  "checkoutTitle": "Оформление заказа",
+  "orderSummary": "Сводка заказа",
+  "shippingAndPayment": "Доставка и оплата",
+  "nameSurnameInDev": "Имя и фамилия — в разработке",
+  "emailLabel": "Email",
+  "addressLabel": "Адрес",
+  "cityLabel": "Город",
+  "zipCodeLabel": "Почтовый индекс",
+  "emailPlaceholder": "you@example.com",
+  "addressPlaceholder": "ул. Пример, 123",
+  "placeOrderButton": "Оформить заказ",
+  "orderFailedTitle": "Не удалось оформить заказ",
+  "orderFailedDescGeneric": "Произошла ошибка при оформлении заказа. Попробуйте еще раз.",
+  "inDevelopment": "В разработке",
+
+  "emailInvalid": "Введите корректный email.",
+  "addressMin": "Адрес слишком короткий.",
+  "cityMin": "Город слишком короткий.",
+  "zipInvalid": "Введите 5-значный индекс."
 }
