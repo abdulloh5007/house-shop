@@ -30,9 +30,6 @@ const productSchema = z.object({
     ageGroup: z.enum(['kids', 'adults']),
     gender: z.enum(['girl', 'boy', 'both']),
     productType: z.enum(['headwear', 'clothes', 'shoes']),
-    discountPercentage: z.string().optional(),
-    originalPrice: z.string().optional(),
-    discountedPrice: z.string().optional(),
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
