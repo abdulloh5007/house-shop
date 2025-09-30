@@ -289,7 +289,6 @@ export default function NewProductPage() {
 
                             {/* Sizes management */}
                             <div className="space-y-2">
-                                <FormLabel>{t.sizeAndQuantity}</FormLabel>
                                 <div className="flex items-end gap-2">
                                     <div className="flex-1">
                                         <FormLabel>{t.sizeLabel}</FormLabel>
@@ -405,50 +404,6 @@ export default function NewProductPage() {
                                                     <SelectItem value="boy">{t.genderBoy}</SelectItem>
                                                 </SelectContent>
                                             </Select>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            </div>
-
-                            {/* DISCOUNT FIELDS */}
-                            <div className="flex gap-4">
-                                <FormField
-                                    control={form.control}
-                                    name="originalPrice"
-                                    render={({ field }) => (
-                                        <FormItem className="flex-1">
-                                            <FormLabel>Оригинальная цена (для скидки)</FormLabel>
-                                            <FormControl>
-                                                <FormattedInput
-                                                    placeholder="1 000 000"
-                                                    value={field.value || ''}
-                                                    onChange={field.onChange}
-                                                />
-                                            </FormControl>
-                                            <FormDescription>
-                                                Цена до применения скидки. Если не указана, цена продажи будет считаться оригинальной.
-                                            </FormDescription>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="discountPercentage"
-                                    render={({ field }) => (
-                                        <FormItem className="flex-1">
-                                            <FormLabel>Процент скидки</FormLabel>
-                                            <FormControl>
-                                                <FormattedInput
-                                                    placeholder="0"
-                                                    value={field.value || ''}
-                                                    onChange={field.onChange}
-                                                />
-                                            </FormControl>
-                                            <FormDescription>
-                                                Например, 10 для 10%.
-                                            </FormDescription>
                                             <FormMessage />
                                         </FormItem>
                                     )}

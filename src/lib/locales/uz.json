@@ -54,6 +54,9 @@
   "navSettings": "Sozlamalar",
   "navOrders": "Buyurtmalar",
   "navProfile": "Profil",
+  "ordersFilterNew": "Yangi",
+  "ordersFilterAccepted": "Tasdiqlangan",
+  "ordersFilterDeclined": "Rad etilgan",
   "sellProductTitle": "Mahsulot sotuvi",
   "sellProductDesc": "Sotish uchun o'lcham, narx va miqdorni ko'rsating.",
   "sellingPriceLabel": "Sotish narxi (so'm)",
@@ -201,7 +204,7 @@
   "selectSizePlaceholder": "O'lchamni tanlang",
   "noProductsAnimationLabel": "Animatsiya: mahsulotlar topilmadi",
 
-  "addToCartButton": "Savatchaga qo'shish",
+  "addToCartButton": "Savatchaga",
   "inCartButton": "Savatchada",
   "recommendationsTitle": "Tavsiya qilamiz",
   "addToCartTitle": "Savatchaga qo'shish",
@@ -227,5 +230,11 @@
   "emailInvalid": "To'g'ri email kiriting.",
   "addressMin": "Manzil juda qisqa.",
   "cityMin": "Shahar juda qisqa.",
-  "zipInvalid": "5 xonali indeks kiriting."
+  "zipInvalid": "5 xonali indeks kiriting.",
+  "ourChannel": "Bizning kanal",
+  "ourChat": "Bizning chat",
+  "users": "Foydalanuvchilar",
+
+  "deleted": "O`chirilgan",
+  "all": "Hammasi"
 }

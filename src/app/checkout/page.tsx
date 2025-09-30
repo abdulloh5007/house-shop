@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/auth-provider';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useLanguage } from '@/components/language-provider';
@@ -16,32 +16,28 @@ import { BackButton } from '@/components/back-button';
 const formatNumber = (n: number) => Math.floor(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
 export default function CheckoutPage() {
-  const { cart, cartTotal, clearCart } = useCart();
+  const { cart, cartTotal, clearCart, cartReady } = useCart();
   const router = useRouter();
   const { toast } = useToast();
   const { lang } = useLanguage();
   const t = translations[lang];
   const { user: authUser, profile } = useAuth();
   const [isProcessingOrder, setIsProcessingOrder] = useState(false);
+  const navigatingToSuccess = useRef(false);
 
   useEffect(() => {
-    if (cart.items.length === 0) {
+    if (!cartReady) return; // wait until cart loaded from CloudStorage
+    if (cart.items.length === 0 && !navigatingToSuccess.current) {
       router.replace('/');
     }
-  }, [cart.items, router]);
+  }, [cart.items, router, cartReady]);
 
   const placeOrder = async () => {
     const newOrder: any = {
-      id: `ord_${Date.now()}`,
       date: new Date().toISOString(),
       items: cart.items,
       total: cartTotal,
       userId: authUser?.uid || null,
-      customer: {
-        name: authUser?.displayName || null,
-        email: '',
-        username: profile?.username || null,
-      },
     };
 
     setIsProcessingOrder(true);
@@ -56,23 +52,25 @@ export default function CheckoutPage() {
       const result = await response.json();
 
       if (response.ok) {
+        const serverOrderId = result.orderId as string;
+        navigatingToSuccess.current = true;
         clearCart();
-        router.push(`/order-success?orderId=${newOrder.id}`);
+        router.push(`/order-success?orderId=${serverOrderId}`);
       } else {
         throw new Error(result.error || 'Failed to process order');
       }
     } catch (err: any) {
       console.error('Error processing order:', err);
-      toast({
-        title: t.orderFailedTitle || 'Order Failed',
-        description: err?.message || t.orderFailedDescGeneric || 'There was an error placing your order. Please try again.',
-        variant: 'destructive',
-      });
+      // Redirect to order status page with failure animation
+      router.push('/order-success?status=fail');
     } finally {
       setIsProcessingOrder(false);
     }
   };
 
+  if (!cartReady) {
+    return null;
+  }
   if (cart.items.length === 0) {
     return null;
   }

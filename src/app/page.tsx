@@ -454,7 +454,7 @@ function HomePageProductGallery({ product }: { product: Product }) {
       <div className="border-2 border-t-0 rounded-b-lg p-2 flex flex-col flex-grow">
         <div className="flex-grow">
           <div className="flex items-baseline gap-2">
-            <p className="font-semibold text-[16px] text-primary tabular-nums">{formatNumber(product.price)}</p>
+            <p className="font-semibold text-[15px] text-primary tabular-nums truncate">{formatNumber(product.price)}</p>
             {product.originalPrice && (
               <p className="text-xs text-muted-foreground line-through tabular-nums">
                 {formatNumber(product.originalPrice)}
@@ -463,10 +463,10 @@ function HomePageProductGallery({ product }: { product: Product }) {
           </div>
           <h2 className="text-[14px] font-normal text-muted-foreground truncate mt-1">{product.name}</h2>
         </div>
-        <Button asChild className="mt-4 w-full">
+        <Button asChild className="mt-4 w-full text-[12px]">
           <Link href={`/product/${product.id}`} className="flex items-center justify-center">
             {t.viewProduct}
-            <ChevronRight className="ml-2 h-4 w-4" />
+            <ChevronRight className="h-4 w-4" />
           </Link>
         </Button>
       </div>

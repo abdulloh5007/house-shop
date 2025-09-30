@@ -69,9 +69,15 @@
     touch-action: pan-y;
     user-select: none;
     -webkit-user-select: none;
-    overscroll-behavior: none;
-    touch-action: none;
+    @apply overflow-y-scroll; /* чтобы скролл оставался рабочим */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
     /* или pan-x */
+  }
+  
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar {
+    display: none;
   }
 
   body {

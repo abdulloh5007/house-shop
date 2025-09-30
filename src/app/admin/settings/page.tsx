@@ -17,6 +17,8 @@ interface AnimationData {
   walletLoaderAnimation: string | null;
   emptyCartAnimation: string | null;
   productsNotFoundAnimation: string | null;
+  orderSuccessAnimation: string | null;
+  orderUnsuccessAnimation: string | null;
 }
 
 export default function SettingsPage() {
@@ -30,6 +32,8 @@ export default function SettingsPage() {
     walletLoaderAnimation: null,
     emptyCartAnimation: null,
     productsNotFoundAnimation: null,
+    orderSuccessAnimation: null,
+    orderUnsuccessAnimation: null,
   });
 
   const fetchAnimations = useCallback(async () => {
@@ -45,6 +49,8 @@ export default function SettingsPage() {
               walletLoaderAnimation: data.walletLoaderAnimation ?? prev.walletLoaderAnimation,
               emptyCartAnimation: data.emptyCartAnimation ?? prev.emptyCartAnimation,
               productsNotFoundAnimation: data.productsNotFoundAnimation ?? prev.productsNotFoundAnimation,
+              orderSuccessAnimation: (data as any).orderSuccessAnimation ?? prev.orderSuccessAnimation,
+              orderUnsuccessAnimation: (data as any).orderUnsuccessAnimation ?? (prev as any).orderUnsuccessAnimation ?? null,
             }));
         }
     } catch (error) {
@@ -126,6 +132,16 @@ export default function SettingsPage() {
                 label={t.noProductsAnimationLabel}
                 initialDataUrl={animations.productsNotFoundAnimation}
                 onAnimationChange={(dataUrl) => handleAnimationChange('productsNotFoundAnimation', dataUrl)}
+            />
+            <AnimationUploader 
+                label={t.orderSuccessAnimationLabel || 'Анимация успешного заказа'}
+                initialDataUrl={animations.orderSuccessAnimation}
+                onAnimationChange={(dataUrl) => handleAnimationChange('orderSuccessAnimation', dataUrl)}
+            />
+            <AnimationUploader 
+                label={t.orderUnsuccessAnimationLabel || 'Анимация неуспешного заказа'}
+                initialDataUrl={(animations as any).orderUnsuccessAnimation || null}
+                onAnimationChange={(dataUrl) => handleAnimationChange('orderUnsuccessAnimation', dataUrl)}
             />
         </div>
       )}

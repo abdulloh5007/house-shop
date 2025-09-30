@@ -158,7 +158,7 @@ export default function ProfilePage() {
 
   return (
     <div
-      className="w-full h-[100vh]"
+      className="w-full h-[100vh] overscroll-none touch-pan-y"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={endDrag}
@@ -200,7 +200,7 @@ export default function ProfilePage() {
                 <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 text-white flex items-center justify-center shadow-sm">
                   <Megaphone className="h-5 w-5" />
                 </div>
-                <span className="text-[15px] font-medium">Наш канал</span>
+                <span className="text-[15px] font-medium">{t.ourChannel}</span>
               </div>
               <ChevronRight className="h-5 w-5 text-muted-foreground" />
             </button>
@@ -217,7 +217,7 @@ export default function ProfilePage() {
                 <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-purple-500 to-violet-500 text-white flex items-center justify-center shadow-sm">
                   <Users className="h-5 w-5" />
                 </div>
-                <span className="text-[15px] font-medium">Наш чат</span>
+                <span className="text-[15px] font-medium">{t.ourChat}</span>
               </div>
               <ChevronRight className="h-5 w-5 text-muted-foreground" />
             </button>
@@ -237,7 +237,7 @@ export default function ProfilePage() {
                   <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center shadow-sm">
                     <Shield className="h-5 w-5" />
                   </div>
-                  <span className="text-[15px] font-medium">Админ панель</span>
+                  <span className="text-[15px] font-medium">{t.adminPanel}</span>
                 </div>
                 <ChevronRight className="h-5 w-5 text-muted-foreground" />
               </button>
@@ -254,7 +254,7 @@ export default function ProfilePage() {
                   <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center shadow-sm">
                     <ClipboardList className="h-5 w-5" />
                   </div>
-                  <span className="text-[15px] font-medium">Заказы</span>
+                  <span className="text-[15px] font-medium">{t.navOrders}</span>
                 </div>
                 <ChevronRight className="h-5 w-5 text-muted-foreground" />
               </button>
@@ -271,7 +271,7 @@ export default function ProfilePage() {
                   <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-purple-500 to-violet-500 text-white flex items-center justify-center shadow-sm">
                     <Users className="h-5 w-5" />
                   </div>
-                  <span className="text-[15px] font-medium">Пользователи</span>
+                  <span className="text-[15px] font-medium">{t.users}</span>
                 </div>
                 <ChevronRight className="h-5 w-5 text-muted-foreground" />
               </button>

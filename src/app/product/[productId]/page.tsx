@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { doc, getDoc, getFirestore, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, getFirestore, collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
 import { app } from '@/lib/firebase-client';
 import { Product } from '@/app/admin/_components/product-provider';
 import { Loader2, X, ChevronLeft, ChevronRight, ShoppingCart, Ruler, Baby, Users, PackageCheck, Tag, Plus, Minus } from 'lucide-react';
@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import useEmblaCarousel from 'embla-carousel-react';
 import { BackButton } from '@/components/back-button';
 import { useParams } from 'next/navigation';
+import { useAuth } from '@/components/auth-provider';
 import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { useCart } from '@/components/providers';
@@ -424,6 +425,7 @@ export default function ProductPage() {
     const [loading, setLoading] = useState(true);
     const [recommendations, setRecommendations] = useState<Product[]>([]);
     const { addToCart, cart } = useCart();
+    const { user: authUser } = useAuth();
     const { toast } = useToast();
     const { lang } = useLanguage();
     const t = translations[lang];
@@ -431,6 +433,7 @@ export default function ProductPage() {
     const [modalSelectedSize, setModalSelectedSize] = useState<string | number | null>(null);
     const [modalQty, setModalQty] = useState<number>(1);
     const [noProductsAnim, setNoProductsAnim] = useState<string | null>(null);
+    const [hasPendingOrder, setHasPendingOrder] = useState<boolean>(false);
 
     useEffect(() => {
         const fetchNoProductsAnim = async () => {
@@ -486,6 +489,24 @@ export default function ProductPage() {
         };
         fetchProduct();
     }, [productId, toast, t]);
+
+    useEffect(() => {
+        // Realtime check for pending orders of current user and disable Add to Cart if exists
+        const db = getFirestore(app);
+        if (!authUser?.uid) {
+            setHasPendingOrder(false);
+            return;
+        }
+        const ordersRef = collection(db, 'orders');
+        const qy = query(ordersRef, where('userId', '==', authUser.uid), where('status', '==', 'pending'));
+        const unsub = onSnapshot(qy, (snap) => {
+            setHasPendingOrder(!snap.empty);
+        }, (err) => {
+            console.warn('Pending order subscription error', err);
+            setHasPendingOrder(false);
+        });
+        return () => unsub();
+    }, [authUser]);
 
     const handleAddToCart = () => {
         if (!product) return;
@@ -582,7 +603,7 @@ export default function ProductPage() {
 
                     return (
                         <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 gap-3">
                                 <FeaturePill
                                     icon={Users}
                                     label={t.ageGroupLabel}
@@ -711,7 +732,7 @@ export default function ProductPage() {
                                 }
                                 return (product as any).quantity ?? (product as any).stock ?? 0;
                             })();
-                            const disabled = (requireSize && (modalSelectedSize === null || modalSelectedSize === undefined)) || maxQty <= 0;
+                            const disabled = (requireSize && (modalSelectedSize === null || modalSelectedSize === undefined)) || maxQty <= 0 || hasPendingOrder;
                             return (
                                 <Button onClick={handleConfirmAdd} disabled={disabled}>
                                     <ShoppingCart className="h-4 w-4" /> {t.addToCartButton || 'Добавить в корзину'}
@@ -746,12 +767,12 @@ export default function ProductPage() {
                 const stock = sizes.length > 0
                     ? sizes.reduce((sum, s) => sum + (Number(s.quantity) || 0), 0)
                     : ((product as any).quantity ?? (product as any).stock ?? 0);
-                const disabled = stock <= 0;
+                const disabled = stock <= 0 || hasPendingOrder;
                 return (
                     <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm p-4 z-50 border-t">
                         <Button size="lg" className="w-full h-12 text-base" onClick={handleAddToCart} disabled={disabled}>
                             <ShoppingCart className="mr-2 h-5 w-5" />
-                            {t.addToCartButton || 'Добавить в корзину'}
+                            {t.addToCartButton || 'Добавить'}
                         </Button>
                     </div>
                 );

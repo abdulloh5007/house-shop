@@ -65,7 +65,7 @@
   "soldTitle": "Продано!",
   "quantityUnit": "шт.",
   "successfullySold": "успешно продано.",
-  "saleErrorTitle": "Ошибка прода��и",
+  "saleErrorTitle": "Ошибка продажи",
   "failedToCompleteSale": "Не удалось завершить продажу.",
   "areYouSureTitle": "Вы уверены?",
   "deleteConfirmationDesc": "Это действие необратимо. Товар будет навсегда удален из базы данных.",
@@ -190,6 +190,9 @@
   "productTypeShoes": "Обувь",
   "navOrders": "Заказы",
   "navProfile": "Профиль",
+  "ordersFilterNew": "Новый",
+  "ordersFilterAccepted": "Одобренные",
+  "ordersFilterDeclined": "Отказанные",
   "filtersLabel": "Фильтры",
   "cart": "Корзина",
   "shoppingCart": "Корзина",
@@ -217,7 +220,7 @@
   "selectSizeLabel": "Размер",
   "selectSizePlaceholder": "Выберите размер",
 
-  "addToCartButton": "Добавить в корзину",
+  "addToCartButton": "Добавить",
   "inCartButton": "В корзине",
   "recommendationsTitle": "Рекомендуемое",
   "addToCartTitle": "Добавить в корзину",
@@ -243,5 +246,10 @@
   "emailInvalid": "Введите корректный email.",
   "addressMin": "Адрес слишком короткий.",
   "cityMin": "Город слишком короткий.",
-  "zipInvalid": "Введите 5-значный индекс."
+  "zipInvalid": "Введите 5-значный индекс.",
+  "ourChannel": "Наш канал",
+  "ourChat": "Наш чат",
+  "users": "Пользователи",
+
+  "all": "Всего"
 }

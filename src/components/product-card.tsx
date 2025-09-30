@@ -1,5 +1,5 @@
 'use client';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { Product } from '@/lib/types';
 import { Button } from './ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from './ui/card';
@@ -13,6 +13,9 @@ import {
   Dialog,
   DialogContent,
 } from "@/components/ui/dialog"
+import { useAuth } from '@/components/auth-provider';
+import { getFirestore, collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
+import { app } from '@/lib/firebase-client';
 
 interface ProductCardProps {
   product: Product;
@@ -20,6 +23,7 @@ interface ProductCardProps {
 
 export function ProductCard({ product }: ProductCardProps) {
   const { addToCart } = useCart();
+  const { user: authUser } = useAuth();
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [cardEmblaRef, cardEmblaApi] = useEmblaCarousel({ loop: true });
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -37,6 +41,22 @@ export function ProductCard({ product }: ProductCardProps) {
   });
 
   const imageUrls = product.imageUrls || [product.imageUrl];
+  const [hasPendingOrder, setHasPendingOrder] = useState(false);
+
+  // Check pending orders per user and disable add-to-cart if exists
+  useEffect(() => {
+    const db = getFirestore(app);
+    if (!authUser?.uid) {
+      setHasPendingOrder(false);
+      return;
+    }
+    const ordersRef = collection(db, 'orders');
+    const qy = query(ordersRef, where('userId', '==', authUser.uid), where('status', '==', 'pending'));
+    const unsub = onSnapshot(qy, (snap) => {
+      setHasPendingOrder(!snap.empty);
+    }, () => setHasPendingOrder(false));
+    return () => unsub();
+  }, [authUser]);
 
   return (
     <>
@@ -80,7 +100,7 @@ export function ProductCard({ product }: ProductCardProps) {
         </CardContent>
         <CardFooter className="p-4 flex justify-between items-center">
           <p className="text-xl font-semibold">${product.price.toFixed(2)}</p>
-          <Button onClick={() => addToCart(product)}>
+          <Button onClick={() => addToCart(product)} disabled={hasPendingOrder}>
             <ShoppingCart className="mr-2 h-4 w-4" />
             Add to Cart
           </Button>

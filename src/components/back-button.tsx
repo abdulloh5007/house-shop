@@ -35,6 +35,7 @@ export function BackButton() {
           normalized === '/admin' ||
           normalized === '/admin/analytics' ||
           normalized === '/admin/wallet' ||
+          normalized === '/admin/orders' ||
           normalized === '/admin/settings';
         if (isAdminTop) {
           router.replace('/profile');

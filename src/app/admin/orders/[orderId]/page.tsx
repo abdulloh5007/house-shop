@@ -2,9 +2,14 @@ import React from 'react';
 import { db } from '@/lib/firebase-admin';
 import Image from 'next/image';
 import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import Link from 'next/link';
 import type { Order } from '@/lib/types';
+import { translations } from '@/lib/translations';
+import { cn } from '@/lib/utils';
+import { cookies } from 'next/headers';
+import { OrderActions } from '@/app/admin/orders/_components/order-actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,13 +47,29 @@ export default async function AdminOrderDetailsPage({ params }: Params) {
     return <div className="container mx-auto px-4 py-6 text-center text-muted-foreground">Заказ не найден.</div>;
   }
 
+  // Infer language from cookie set by language-provider
+  const cookieStore = await cookies();
+  const lang = (cookieStore.get('lang')?.value as 'ru' | 'uz') || 'ru';
+  const t = translations[lang];
+
+  const formatUZS = (n: number) => Math.floor(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  const locale = lang === 'uz' ? 'uz-UZ' : 'ru-RU';
+  const formatDateTimeText = (value: string | number | Date) =>
+    new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(value));
+
   const u = (order as any).user as UserMin | undefined;
   const name = u?.displayName || 'Без имени';
   const uname = u?.username ? `@${u.username}` : '';
 
   return (
-    <div className="container mx-auto px-4 py-6">
+    <div className="container mx-auto px-4 py-6 pb-44">
       <div className="max-w-2xl mx-auto space-y-4">
+        {/* Order meta above card */}
+        <div className="text-sm text-muted-foreground text-center">
+          Заказ №{(order as any).number ?? (order.id.split('_')[1] || order.id)} • {formatDateTimeText(order.date)}
+        </div>
+
+        {/* Customer card */}
         <Card className="rounded-2xl border bg-card overflow-hidden">
           <div className="px-4 py-4 flex items-center gap-3">
             <Avatar className="h-12 w-12">
@@ -61,10 +82,6 @@ export default async function AdminOrderDetailsPage({ params }: Params) {
             <div className="min-w-0">
               <div className="text-base font-semibold truncate" title={name}>{name}</div>
               {uname && <div className="text-sm text-muted-foreground truncate" title={uname}>{uname}</div>}
-            </div>
-            <div className="ml-auto text-right text-sm text-muted-foreground">
-              <div>Заказ №{order.id.split('_')[1] || order.id}</div>
-              <div>{new Date(order.date).toLocaleString()}</div>
             </div>
           </div>
           <div className="h-px bg-border" />
@@ -83,29 +100,28 @@ export default async function AdminOrderDetailsPage({ params }: Params) {
                     {size ? (
                       <div className="text-xs text-muted-foreground">Размер: {String(size)}</div>
                     ) : null}
-                    <div className="text-sm text-muted-foreground">Количество: {item.quantity}</div>
+                    <div className="text-sm text-muted-foreground">Кол-во: {item.quantity}</div>
                   </div>
-                  <div className="font-medium">${(item.price * item.quantity).toFixed(2)}</div>
+                  <div className="font-medium">{formatUZS(item.price * item.quantity)}</div>
                 </div>
               );
             })}
           </div>
-          <div className="h-px bg-border" />
-          <div className="px-4 py-4 flex items-center justify-between">
-            <div className="text-sm text-muted-foreground">Итого</div>
-            <div className="text-lg font-bold">${order.total.toFixed(2)}</div>
-          </div>
         </Card>
+      </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <form action={`/api/admin/orders/${order.id}/decline`} method="post">
-            <Button type="submit" variant="destructive" className="w-full h-11 rounded-xl">Отказать</Button>
-          </form>
-          <form action={`/api/admin/orders/${order.id}/accept`} method="post">
-            <Button type="submit" className="w-full h-11 rounded-xl">Принять</Button>
-          </form>
+      {/* Fixed bottom bar */}
+      <div className="fixed inset-x-0 bottom-20 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto px-4 py-3 max-w-2xl">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-sm text-muted-foreground">{t.subtotal || 'Итого'}</div>
+            <div className="text-lg font-bold">{formatUZS(order.total)}</div>
+          </div>
+
+          <OrderActions orderId={order.id} />
         </div>
       </div>
-    </div>
+
+      </div>
   );
 }

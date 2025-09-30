@@ -197,6 +197,7 @@ type CartContextType = {
   clearCart: () => void;
   cartTotal: number;
   itemCount: number;
+  cartReady: boolean;
 };
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -205,12 +206,14 @@ const CART_STORAGE_KEY = 'neoncart-cart';
 
 function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, dispatch] = useReducer(cartReducer, { items: [] });
+  const [cartReady, setCartReady] = useState(false);
 
   useEffect(() => {
     const getCart = () => {
       window.Telegram.WebApp.CloudStorage.getItem(CART_STORAGE_KEY, (err, value) => {
         if (err) {
           console.error('Error getting cart from cloud storage', err);
+          setCartReady(true);
           return;
         }
         if (value) {
@@ -220,10 +223,14 @@ function CartProvider({ children }: { children: React.ReactNode }) {
             console.error('Failed to parse cart from cloud storage', error);
           }
         }
+        setCartReady(true);
       });
     };
     if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.CloudStorage) {
       getCart();
+    } else {
+      // If CloudStorage not available, consider cart ready immediately
+      setCartReady(true);
     }
   }, []);
 
@@ -268,7 +275,7 @@ function CartProvider({ children }: { children: React.ReactNode }) {
   
   const itemCount = cart.items.reduce((total, item) => total + item.quantity, 0);
 
-  const value = { cart, addToCart, removeFromCart, updateQuantity, clearCart, cartTotal, itemCount };
+  const value = { cart, addToCart, removeFromCart, updateQuantity, clearCart, cartTotal, itemCount, cartReady };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

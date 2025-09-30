@@ -26,11 +26,15 @@ export type CartItem = {
 
 export type Order = {
   id: string;
+  number?: number; // Sequential order number
   date: string;
   items: CartItem[];
   total: number;
+  userId?: string;
+  status?: string;
   customer: {
     name: string;
     email: string;
+    username?: string | null;
   };
 };
